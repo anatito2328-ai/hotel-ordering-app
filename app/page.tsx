@@ -48,6 +48,13 @@ export default function Home() {
           >
             🧹 የክፍል ጽዳት እና አገልግሎት (Housekeeping)
           </Link>
+
+          <Link
+            href="/waiter"
+            className="w-full py-3.5 px-5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl transition"
+          >
+            🧑‍🍳 የአስተናጋጆች ገጽ (Waiter App)
+          </Link>
         </div>
       </div>
     </main>
