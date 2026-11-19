@@ -34,6 +34,13 @@ export default function Home() {
           >
             📱 QR ኮድ ማውጫ (QR Generator)
           </Link>
+           
+           <Link
+            href="/admin"
+            className="w-full py-3.5 px-5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition"
+          >
+            ⚙️ የባለቤት ዳሽቦርድ (Admin Panel)
+          </Link>
         </div>
       </div>
     </main>
