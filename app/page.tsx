@@ -36,7 +36,7 @@ export default function Home() {
           </Link>
            
            <Link
-            href="/admin"
+            href="/admin1"
             className="w-full py-3.5 px-5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition"
           >
             ⚙️ የባለቤት ዳሽቦርድ (Admin Panel)
