@@ -13,6 +13,7 @@ interface MenuItem {
   price: number;
   category: string;
   description: string;
+  image?: string;
   available: boolean;
 }
 
@@ -22,7 +23,36 @@ interface LocationItem {
   type: "ROOM" | "TABLE";
 }
 
-const CATEGORIES = ["ቁርስ (Breakfast)", "ምሳ እና እራት (Main)", "መጠጦች (Drinks)", "ልዩ (Special)"];
+const CATEGORIES = [
+  "ቁርስ (Breakfast)",
+  "ምሳ እና እራት (Main)",
+  "መጠጦች (Drinks)",
+  "ልዩ (Special)",
+];
+
+// ፎቶውን መጠኑን አሳንሶ ለFirebase ዝግጁ የሚያደርግ ፋንክሽን
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxWidth = 500;
+        const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.7));
+      };
+      img.onerror = reject;
+    };
+    reader.onerror = reject;
+  });
+};
 
 export default function AdminDashboard() {
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -37,6 +67,8 @@ export default function AdminDashboard() {
   const [itemPrice, setItemPrice] = useState("");
   const [itemCategory, setItemCategory] = useState(CATEGORIES[1]);
   const [itemDesc, setItemDesc] = useState("");
+  const [itemImage, setItemImage] = useState("");
+  const [isUploadingImg, setIsUploadingImg] = useState(false);
 
   // Locations (Rooms & Tables) States
   const [rooms, setRooms] = useState<LocationItem[]>([]);
@@ -112,6 +144,21 @@ export default function AdminDashboard() {
     }
   };
 
+  // Handle Photo File Selection
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingImg(true);
+    try {
+      const compressed = await compressImage(file);
+      setItemImage(compressed);
+    } catch {
+      showNotice("ፎቶውን ማንበብ አልተቻለም፣ እባክዎ ሌላ ፎቶ ይሞክሩ።");
+    } finally {
+      setIsUploadingImg(false);
+    }
+  };
+
   // Add Menu Item
   const handleAddMenu = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,16 +170,17 @@ export default function AdminDashboard() {
       price: Number(itemPrice),
       category: itemCategory,
       description: itemDesc.trim(),
+      image: itemImage.trim(),
       available: true,
     });
 
     setItemName("");
     setItemPrice("");
     setItemDesc("");
-    showNotice("አዲሱ ምግብ ወደ ሜኑ ተጨምሯል!");
+    setItemImage("");
+    showNotice("አዲሱ ምግብ ከነፎቶው ወደ ሜኑ ተጨምሯል!");
   };
 
-  // Toggle Out of Stock
   const toggleAvailability = async (item: MenuItem) => {
     if (!db) return;
     await update(ref(db, `menuItems/${item.id}`), {
@@ -140,14 +188,12 @@ export default function AdminDashboard() {
     });
   };
 
-  // Delete Menu Item
   const deleteMenuItem = async (id: string) => {
     if (!db) return;
     await remove(ref(db, `menuItems/${id}`));
     showNotice("ምግቡ ከሜኑ ተሰርዟል።");
   };
 
-  // Add Room or Table
   const handleAddLocation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !locationNumber.trim()) return;
@@ -310,6 +356,7 @@ export default function AdminDashboard() {
                   ))}
                 </select>
               </div>
+
               <input
                 type="text"
                 value={itemDesc}
@@ -317,9 +364,54 @@ export default function AdminDashboard() {
                 placeholder="አጭር መግለጫ (አማራጭ - ለምሳሌ፡ በቅቤ የተሰራ ትኩስ ጥብስ)"
                 className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl focus:outline-none focus:border-amber-400"
               />
+
+              {/* Photo Upload Section */}
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+                <label className="block text-sm font-medium text-slate-300">
+                  📸 የምግቡ ፎቶ (አማራጭ)
+                </label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 text-sm font-medium rounded-lg cursor-pointer transition">
+                    {isUploadingImg ? "በመጫን ላይ..." : "📁 ፎቶ ከፋይል ምረጥ"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-xs text-slate-500">ወይም</span>
+                  <input
+                    type="url"
+                    value={itemImage.startsWith("data:") ? "" : itemImage}
+                    onChange={(e) => setItemImage(e.target.value)}
+                    placeholder="የፎቶ ሊንክ (https://...)"
+                    className="flex-1 min-w-[200px] px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                {itemImage && (
+                  <div className="flex items-center gap-3 pt-2">
+                    <img
+                      src={itemImage}
+                      alt="Preview"
+                      className="w-16 h-16 object-cover rounded-lg border border-slate-700"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setItemImage("")}
+                      className="text-xs text-red-400 hover:text-red-300 cursor-pointer"
+                    >
+                      ✕ ፎቶውን አንሳ
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl transition cursor-pointer"
+                disabled={isUploadingImg}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 font-bold rounded-xl transition cursor-pointer"
               >
                 ወደ ሜኑ መዝግብ
               </button>
@@ -343,15 +435,30 @@ export default function AdminDashboard() {
                           : "bg-slate-900/50 border-red-900/50 opacity-70"
                       }`}
                     >
-                      <div>
-                        <p className="font-bold text-white">
-                          {item.name}{" "}
-                          <span className="text-amber-400 ml-1">{item.price} ብር</span>
-                        </p>
-                        <p className="text-xs text-slate-400">{item.category}</p>
-                        {item.description && (
-                          <p className="text-xs text-slate-500 mt-1">{item.description}</p>
+                      <div className="flex items-center gap-3 min-w-0">
+                        {item.image ? (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-14 h-14 object-cover rounded-lg border border-slate-700 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-14 h-14 bg-slate-800 rounded-lg flex items-center justify-center text-xl shrink-0">
+                            🍽️
+                          </div>
                         )}
+                        <div className="min-w-0">
+                          <p className="font-bold text-white truncate">
+                            {item.name}{" "}
+                            <span className="text-amber-400 ml-1">{item.price} ብር</span>
+                          </p>
+                          <p className="text-xs text-slate-400">{item.category}</p>
+                          {item.description && (
+                            <p className="text-xs text-slate-500 mt-1 line-clamp-1">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div className="flex flex-col gap-2 shrink-0">
                         <button
