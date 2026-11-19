@@ -41,6 +41,13 @@ export default function Home() {
           >
             ⚙️ የባለቤት ዳሽቦርድ (Admin Panel)
           </Link>
+
+          <Link
+            href="/housekeeping"
+            className="w-full py-3.5 px-5 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl transition"
+          >
+            🧹 የክፍል ጽዳት እና አገልግሎት (Housekeeping)
+          </Link>
         </div>
       </div>
     </main>
